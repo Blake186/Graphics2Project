@@ -1,0 +1,47 @@
+﻿Build started 7/8/2015 12:37:42 PM.
+     1>Project "C:\Users\fullsail\Desktop\Graphics 1 Labs\New folder (2)\Bergstrom.Blake.Lab9\GraphicsLab7\GraphicsLab7\GraphicsLab7.vcxproj" on node 2 (Build target(s)).
+     1>ClCompile:
+         C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\x86_amd64\CL.exe /c /Zi /nologo /W3 /WX- /sdl /Od /D WIN32 /D _DEBUG /D _WINDOWS /D _CRT_SECURE_NO_WARNINGS /D _UNICODE /D UNICODE /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"x64\Debug\\" /Fd"x64\Debug\vc120.pdb" /Gd /TP /errorReport:prompt main.cpp
+         main.cpp
+     1>c:\users\fullsail\desktop\graphics 1 labs\new folder (2)\bergstrom.blake.lab9\graphicslab7\graphicslab7\Math.h(44): warning C4244: 'initializing' : conversion from 'float' to 'int', possible loss of data
+     1>c:\users\fullsail\desktop\graphics 1 labs\new folder (2)\bergstrom.blake.lab9\graphicslab7\graphicslab7\Math.h(54): warning C4244: 'initializing' : conversion from 'float' to 'int', possible loss of data
+     1>c:\users\fullsail\desktop\graphics 1 labs\new folder (2)\bergstrom.blake.lab9\graphicslab7\graphicslab7\Math.h(55): warning C4244: 'initializing' : conversion from 'float' to 'int', possible loss of data
+     1>main.cpp(254): warning C4091: 'static ' : ignored on left of 'DEMO_APP' when no variable is declared
+     1>main.cpp(630): warning C4267: 'argument' : conversion from 'size_t' to 'UINT', possible loss of data
+     1>main.cpp(1373): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>main.cpp(1374): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>main.cpp(1400): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>main.cpp(1408): warning C4244: '+=' : conversion from 'double' to 'FLOAT', possible loss of data
+     1>main.cpp(1410): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>main.cpp(1418): warning C4244: '-=' : conversion from 'double' to 'FLOAT', possible loss of data
+     1>main.cpp(1422): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>main.cpp(1429): warning C4244: '+=' : conversion from 'double' to 'FLOAT', possible loss of data
+     1>main.cpp(1432): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>main.cpp(1440): warning C4244: '-=' : conversion from 'double' to 'FLOAT', possible loss of data
+     1>main.cpp(1444): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>main.cpp(1450): warning C4244: '+=' : conversion from 'double' to 'FLOAT', possible loss of data
+     1>main.cpp(1454): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>main.cpp(1467): warning C4305: 'argument' : truncation from 'double' to 'float'
+     1>main.cpp(1485): warning C4305: 'argument' : truncation from 'double' to 'float'
+     1>main.cpp(1593): warning C4267: 'argument' : conversion from 'size_t' to 'UINT', possible loss of data
+     1>main.cpp(1386): warning C4101: 'm_cursor' : unreferenced local variable
+     1>main.cpp(1363): warning C4101: 'm_position' : unreferenced local variable
+     1>main.cpp(1787): warning C4244: '=' : conversion from 'UINT' to 'FLOAT', possible loss of data
+     1>main.cpp(1788): warning C4244: '=' : conversion from 'UINT' to 'FLOAT', possible loss of data
+     1>main.cpp(1795): warning C4244: 'argument' : conversion from 'UINT' to 'float', possible loss of data
+     1>c:\users\fullsail\desktop\graphics 1 labs\new folder (2)\bergstrom.blake.lab9\graphicslab7\graphicslab7\main.cpp(727): warning C4715: 'DEMO_APP::LoadObj' : not all control paths return a value
+       Link:
+         C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\x86_amd64\link.exe /ERRORREPORT:PROMPT /OUT:"C:\Users\fullsail\Desktop\Graphics 1 Labs\New folder (2)\Bergstrom.Blake.Lab9\GraphicsLab7\x64\Debug\GraphicsLab7.exe" /INCREMENTAL /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:\Users\fullsail\Desktop\Graphics 1 Labs\New folder (2)\Bergstrom.Blake.Lab9\GraphicsLab7\x64\Debug\GraphicsLab7.pdb" /SUBSYSTEM:WINDOWS /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:\Users\fullsail\Desktop\Graphics 1 Labs\New folder (2)\Bergstrom.Blake.Lab9\GraphicsLab7\x64\Debug\GraphicsLab7.lib" /MACHINE:X64 x64\Debug\Camera.obj
+         x64\Debug\DDSTextureLoader.obj
+         x64\Debug\main.obj
+         x64\Debug\Model.obj
+         x64\Debug\My_Matrix.obj
+         x64\Debug\My_Vertex.obj
+         x64\Debug\SetupGraphics.obj
+         x64\Debug\XTime.obj
+         GraphicsLab7.vcxproj -> C:\Users\fullsail\Desktop\Graphics 1 Labs\New folder (2)\Bergstrom.Blake.Lab9\GraphicsLab7\x64\Debug\GraphicsLab7.exe
+     1>Done Building Project "C:\Users\fullsail\Desktop\Graphics 1 Labs\New folder (2)\Bergstrom.Blake.Lab9\GraphicsLab7\GraphicsLab7\GraphicsLab7.vcxproj" (Build target(s)).
+
+Build succeeded.
+
+Time Elapsed 00:00:05.15
