@@ -47,6 +47,8 @@
     <FxCompile Include="GridVertexShader.hlsl" />
     <FxCompile Include="GridPixelShader.hlsl" />
     <FxCompile Include="PixelShaderGundam.hlsl" />
+    <FxCompile Include="SkyboxPixelShader.hlsl" />
+    <FxCompile Include="SkyboxShader.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="XTime.h">

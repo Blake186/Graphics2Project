@@ -8,6 +8,10 @@ SetupGraphics::SetupGraphics()
 
 SetupGraphics::~SetupGraphics()
 {
+	m_device->Release();
+	m_deviceContext->Release();
+	m_RenderTargetVeiw->Release();
+	m_SwapChain->Release();
 }
 
 void SetupGraphics::Set_Device_DeviceContex_SwapChain(HWND _window)
@@ -16,8 +20,8 @@ void SetupGraphics::Set_Device_DeviceContex_SwapChain(HWND _window)
 	HRESULT m_result;
 	ZeroMemory(&sd, sizeof(sd));
 	sd.BufferCount = 1;
-	sd.BufferDesc.Width = 500;
-	sd.BufferDesc.Height = 500;
+	sd.BufferDesc.Width = 800;
+	sd.BufferDesc.Height = 800;
 	sd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 	sd.BufferDesc.RefreshRate.Numerator = 60;
 	sd.BufferDesc.RefreshRate.Denominator = 1;
@@ -60,8 +64,8 @@ void SetupGraphics::Set_Device_DeviceContex_SwapChain(HWND _window)
 	m_SwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&pBackBuffer);
 	m_device->CreateRenderTargetView(pBackBuffer, NULL, &m_RenderTargetVeiw);
 
-	vp.Width = 500;
-	vp.Height = 500;
+	vp.Width = 800;
+	vp.Height = 800;
 	vp.MinDepth = 0.0f;
 	vp.MaxDepth = 1.0f;
 	vp.TopLeftX = 0;

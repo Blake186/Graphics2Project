@@ -1,4 +1,20 @@
-float4 main() : SV_TARGET
+
+struct VertexOutPut
 {
-	return float4(0.0f, 1.0f, 0.0f, 1.0f);
+	float4 colorOut : COLOR;
+	float4 projectedCoordinate : SV_POSITION;
+	float2 m_UV : UVCOORD;
+	float2 m_nrm : NmrCOORD;
+};
+
+float4 main(VertexOutPut input) : SV_TARGET
+{
+	float4 FinalColor;
+	FinalColor.a = input.colorOut.a;
+	FinalColor.r = input.colorOut.r;
+	FinalColor.g = input.colorOut.g;
+	FinalColor.b = input.colorOut.b;
+
+
+	return FinalColor;
 }

@@ -37,6 +37,7 @@ using namespace std;
 #include <vector>
 #include "Math.h"
 #include "SetupGraphics.h"
+#include "SkyboxShader.csh"
 
 #pragma comment(lib, "dxgi.lib")
 using namespace DirectX;
@@ -50,8 +51,9 @@ using namespace DirectX;
 #include <fstream>
 #include "DDSTextureLoader.h"
 #include "PixelShaderGundam.csh"
-#define BACKBUFFER_WIDTH	500
-#define BACKBUFFER_HEIGHT	500
+#include "SkyboxPixelShader.csh"
+#define BACKBUFFER_WIDTH	800
+#define BACKBUFFER_HEIGHT	800
 //_DEBUG(D3D11_CREATE_DEVICE_DEBUG);
 #define TRUE 1
 #define FALSE 0
@@ -75,7 +77,8 @@ ID3D11Texture2D* m_DepthBuffer;
 ID3D11DepthStencilState* DepthState;
 ID3D11RasterizerState * g_pRasterState;
 ID3D11RasterizerState* g_pRasterState2;
-MY_Matrix ProjectionMatrix;
+XMFLOAT4X4 ProjectionMatrix;
+//MY_Matrix ProjectionMatrix;
 static class DEMO_APP
 {
 	HINSTANCE						application;
@@ -106,8 +109,11 @@ static class DEMO_APP
 	ID3D11PixelShader* m_GridPixalShader;
 	ID3D11VertexShader* m_GridVertexShader;
 
-	ID3D11PixelShader* GundamPixalShader;
 
+
+	ID3D11VertexShader* SkyboxVertexshader;
+	ID3D11PixelShader* GundamPixalShader;
+	ID3D11PixelShader* skyboxPixalshader;
 	ID3D11InputLayout* m_InputLayout;
 	ID3D11InputLayout* m_InputLayoutGrid;
 
@@ -131,6 +137,10 @@ static class DEMO_APP
 
 	};
 
+
+	ID3D11Buffer* VertexbufferSkybox;
+	ID3D11Buffer* IndexSkyboxBuffer;
+
 	struct Object
 	{
 		//FLOAT WORLDMATRIX[16];
@@ -153,10 +163,12 @@ static class DEMO_APP
 
 	};
 	ID3D11Buffer* VertexBuffer;
-
+	Scene matrixveiw;
 	// Starts Index and Vertex Buffer
 	ID3D11Buffer* Vertex_Buffer_Star;
 	ID3D11Buffer* m_Index_Buffer_Star;
+
+
 
 	ID3D11Buffer* GridVertexBuffer;
 	ID3D11Buffer* m_ConstbufferObject;
@@ -167,19 +179,23 @@ static class DEMO_APP
 	ID3D11Resource* m_Gundam;
 	ID3D11ShaderResourceView* m_Gundamveiw;
 	ID3D11ShaderResourceView* ResourceVeiw;
+	ID3D11ShaderResourceView* SkyboxResourceVeiw;
+	ID3D11Resource* m_StrikeGundam;
+	ID3D11ShaderResourceView* m_StrikeGundamveiw;
 	// TODO: PART 3 STEP 4a
 	SEND_TO_VRAM toShader;
 	//std::vector<ID3D11Buffer*> m_Checkeard;
 
 	ID3D11BlendState* m_blendstate;
 
-
+	Object StarWorldMatrix;
 	IDXGIFactory* m_factory;
 	IDXGIAdapter* m_adapter;
 	ID3D11Buffer* PixalBuffer;
 
+	//ID3D11Buffer* StarVertexBuffer;
+	//	ID3D11Buffer* StarIndexBuffer;
 
-	vector<XMFLOAT3> vertices;
 	vector<XMFLOAT2> uvs;
 	vector<XMFLOAT3> normals;
 	vector<unsigned int> Index;
@@ -197,6 +213,16 @@ public:
 		XMFLOAT2 UV;
 		XMFLOAT2 Nrm;
 	};
+	struct Light
+	{
+		XMFLOAT4 m_diffuseColor;
+		XMFLOAT3 LightDirection;
+		float padding;
+	};
+
+	ID3D11Buffer* m_constbufferlight;
+
+	vector<SIMPLE_VERTEX> vertices;
 	Animation numberanimations;
 	POINT m_position;
 	float m_timer = 0.0f;
@@ -209,19 +235,72 @@ public:
 	MY_Matrix WorldMatrixGrid;
 	MY_Matrix VeiwMAtrix;
 	MY_Matrix WolrdSpaceCamrea;
-	SIMPLE_VERTEX Gundam[10359];
+	SIMPLE_VERTEX Gundam[9897];
+	Object GundamWorldMatrix;
 
+	Object SkyworldMatrix;
+	SIMPLE_VERTEX* FreedomGundam;
+	Object FreedomGundamWorldMatrix;
+	ID3D11Buffer* Vertex_Buffer_FreedomGundam;
+	ID3D11Buffer* m_Index_Buffer_FreedomGundam;
 
+	SIMPLE_VERTEX* Cubeskybox;
+#pragma region Duel Gundam Variables
 
+	SIMPLE_VERTEX* DuelGundam;
+	Object DuelGundamWorldMatrix;
+	ID3D11Buffer* Vertex_Buffer_DuelGundam;
+	ID3D11Buffer* m_Index_Buffer_DuelGundam;
+	ID3D11Resource* m_DuelGundam;
+	ID3D11ShaderResourceView* m_DuelGundamveiw;
+#pragma endregion
+#pragma region Ageis Gundam Variables
 
-	bool LoadObj(const char* Path, vector<XMFLOAT3>& out_vertices, vector<XMFLOAT2>& out_uvs, vector<XMFLOAT3>& out_normals, vector<unsigned int>&Index);
+	SIMPLE_VERTEX* AgeisGundam;
+	Object AgeisGundamWorldMatrix;
+	ID3D11Buffer* Vertex_Buffer_AgeisGundam;
+	ID3D11Buffer* m_Index_Buffer_AgeisGundam;
+	ID3D11Resource* m_AgeisGundam;
+	ID3D11ShaderResourceView* m_AgeisGundamveiw;
+#pragma endregion
+#pragma region WingZero Gundam Variables
+
+	SIMPLE_VERTEX* WingZeroGundam;
+	Object WingZeroGundamWorldMatrix;
+	ID3D11Buffer* Vertex_Buffer_WingZeroGundam;
+	ID3D11Buffer* m_Index_Buffer_WingZeroGundam;
+	ID3D11Resource* m_WingZeroGundam;
+	ID3D11ShaderResourceView* m_WingZeroGundamveiw;
+#pragma endregion
+#pragma region SandRock Gundam Variables
+
+	SIMPLE_VERTEX* SandRockGundam;
+	Object SandRockGundamWorldMatrix;
+	ID3D11Buffer* Vertex_Buffer_SandRockGundam;
+	ID3D11Buffer* m_Index_Buffer_SandRockGundam;
+	ID3D11Resource* m_SandRockGundam;
+	ID3D11ShaderResourceView* m_SandRockGundamveiw;
+#pragma endregion
+#pragma region HeavyArms Gundam Variables
+
+	SIMPLE_VERTEX* HeavyArmsGundam;
+	Object HeavyArmsGundamWorldMatrix;
+	ID3D11Buffer* Vertex_Buffer_HeavyArmsGundam;
+	ID3D11Buffer* m_Index_Buffer_HeavyArmsGundam;
+	ID3D11Resource* m_HeavyArmsGundam;
+	ID3D11ShaderResourceView* m_HeavyArmsGundamveiw;
+#pragma endregion
+
+	bool SecondVeiwPortOn = false;
 
 	SIMPLE_VERTEX Triangle[22];
-	SIMPLE_VERTEX Grid[89];
+	ID3D11Buffer* StarVertexBuffer;
+	ID3D11Buffer* StarIndexBuffer;
+
 	float numbertimer = 0.0f;
 	XMFLOAT4X4 WorldMatrix;
 	XMFLOAT4X4 VeiwMatrix;
-	XMFLOAT4X4 ProjectionMatrix;
+	Light Directional;
 	//std::vector<SIMPLE_VERTEX*> m_Checkers;
 	DEMO_APP(HINSTANCE hinst, WNDPROC proc);
 	bool Run();
@@ -230,10 +309,12 @@ public:
 	void CreateVertexBuffer(SIMPLE_VERTEX* _Vertex, int _Size, ID3D11Buffer** _VertexBuffer);
 	void CreateConstBuffer(ID3D11Buffer** _ConstBuffer, Object _matrix);
 	void CreateConstBuffer(ID3D11Buffer** _ConstBuffer, Scene _matrix2);
+	void CreateConstBuffer(ID3D11Buffer** _ConstBuffer, Light _matrix2);
 	void CreateConstBuffer(ID3D11Buffer** _ConstBuffer, Animation _animate);
 	void DrawLineStrip();
 	void ClearBuffer(float* _RGBA);
 	void Map_UnMap_Variables(ID3D11Buffer** _ConstBuffer, Animation _Shader);
+	void Map_UnMap_Variables(ID3D11Buffer** _ConstBuffer, Light _Shader);
 	void Map_UnMap_Variables(ID3D11Buffer** _ConstBuffer, Object _Shader);
 	void Map_UnMap_Variables(ID3D11Buffer** _ConstBuffer, Scene _Shader);
 	void Set_PS_VS_INPUTLAYOUT_VB_CB(UINT _stride, UINT _zero, ID3D11PixelShader** _PixalShader, ID3D11VertexShader** _VertexShader, ID3D11Buffer** _VertexBuffer, ID3D11Buffer** ConstBuffer, ID3D11InputLayout** _InputLayout);
@@ -250,7 +331,7 @@ public:
 	void Create_Resource_Veiw(ID3D11ShaderResourceView** _ResourceVeiw, ID3D11Resource* _resource);
 	void Create_Blend_State(ID3D11BlendState** _blend);
 	void Make_A_Model(vector<XMFLOAT3> _verts, SIMPLE_VERTEX* _Model, UINT _Index, ID3D11Buffer** VertexBuffer, ID3D11Buffer** IndexBuffer, const vector<unsigned int> Index);
-
+	bool LoadObj(const char* Path, vector<SIMPLE_VERTEX>& out_vertices, vector<XMFLOAT2>& out_uvs, vector<XMFLOAT3>& out_normals, vector<unsigned int>&Index);
 };
 
 //************************************************************
@@ -271,7 +352,6 @@ void DEMO_APP::CreateVertexBuffer(SIMPLE_VERTEX* _Vertex, int _Size, ID3D11Buffe
 	InitData.pSysMem = _Vertex;
 	InitData.SysMemPitch = 0;
 	InitData.SysMemSlicePitch = 0;
-
 
 	SetupGraphics::GetInstance()->GetDevice()->CreateBuffer(&_BufferDes, &InitData, _VertexBuffer);
 
@@ -457,6 +537,23 @@ void DEMO_APP::CreateConstBuffer(ID3D11Buffer** _ConstBuffer, Scene _matrix2)
 
 	SetupGraphics::GetInstance()->GetDevice()->CreateBuffer(&m_constbuff, NULL, _ConstBuffer);
 }
+void DEMO_APP::CreateConstBuffer(ID3D11Buffer** _ConstBuffer, Light _matrix2)
+{
+
+
+	D3D11_BUFFER_DESC m_constbuff;
+	ZeroMemory(&m_constbuff, sizeof(m_constbuff));
+	m_constbuff.ByteWidth = sizeof(_matrix2);
+	m_constbuff.Usage = D3D11_USAGE_DYNAMIC;
+	m_constbuff.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	m_constbuff.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	m_constbuff.MiscFlags = 0;
+	m_constbuff.StructureByteStride = 0;
+
+
+
+	SetupGraphics::GetInstance()->GetDevice()->CreateBuffer(&m_constbuff, NULL, _ConstBuffer);
+}
 void DEMO_APP::CreateConstBuffer(ID3D11Buffer** _ConstBuffer, Animation _animate)
 {
 	D3D11_BUFFER_DESC m_constbuff;
@@ -479,6 +576,14 @@ void DEMO_APP::DrawVerts(UINT _VertextCount, D3D11_PRIMITIVE_TOPOLOGY _pTopology
 
 }
 void DEMO_APP::Map_UnMap_Variables(ID3D11Buffer** _ConstBuffer, Animation _Shader)
+{
+	D3D11_MAPPED_SUBRESOURCE m_MapSource;
+	SetupGraphics::GetInstance()->GetDeviceContext()->Map(*_ConstBuffer, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &m_MapSource);
+	memcpy(m_MapSource.pData, &_Shader, sizeof(_Shader));
+	SetupGraphics::GetInstance()->GetDeviceContext()->Unmap(*_ConstBuffer, NULL);
+
+}
+void DEMO_APP::Map_UnMap_Variables(ID3D11Buffer** _ConstBuffer, Light _Shader)
 {
 	D3D11_MAPPED_SUBRESOURCE m_MapSource;
 	SetupGraphics::GetInstance()->GetDeviceContext()->Map(*_ConstBuffer, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &m_MapSource);
@@ -631,7 +736,7 @@ void DEMO_APP::Make_A_Model(vector<XMFLOAT3> _vertes, SIMPLE_VERTEX* _model, UIN
 
 
 }
-bool DEMO_APP::LoadObj(const char* Path, vector<XMFLOAT3>& out_vertices, vector<XMFLOAT2>& out_uvs, vector<XMFLOAT3>& out_normals, vector<unsigned int>&Index)
+bool DEMO_APP::LoadObj(const char* Path, vector<SIMPLE_VERTEX>& out_vertices, vector<XMFLOAT2>& out_uvs, vector<XMFLOAT3>& out_normals, vector<unsigned int>&Index)
 {
 
 	vector<XMFLOAT3> temp_vertices;
@@ -683,6 +788,7 @@ bool DEMO_APP::LoadObj(const char* Path, vector<XMFLOAT3>& out_vertices, vector<
 				printf("File can't be read by our simple parser : ( Try exporting with other options\n");
 				return false;
 			}
+
 			vertexIndices.push_back(m_vertexindex[0]);
 			vertexIndices.push_back(m_vertexindex[1]);
 			vertexIndices.push_back(m_vertexindex[2]);
@@ -706,21 +812,30 @@ bool DEMO_APP::LoadObj(const char* Path, vector<XMFLOAT3>& out_vertices, vector<
 
 	for (unsigned int i = 0; i < vertexIndices.size(); i++)
 	{
-		unsigned int VertexIndex = vertexIndices[i];
-		XMFLOAT3 temp = temp_vertices[VertexIndex - 1];
-		Index.push_back(VertexIndex - 1);
+		unsigned int VertexIndex = uvIndices[i];
+		XMFLOAT2 temp = temp_uvs[VertexIndex - 1];
+
+		unsigned int VertexIndex1 = vertexIndices[i];
+		XMFLOAT3 temp1 = temp_vertices[VertexIndex1 - 1];
+
+		unsigned int VertexIndex2 = normalIndices[i];
+		XMFLOAT3 temp2 = temp_normals[VertexIndex2 - 1];
+		SIMPLE_VERTEX verttemp;
+		verttemp.m_position.x = temp1.x;
+		verttemp.m_position.y = temp1.y;
+		verttemp.m_position.z = temp1.z;
+
+		verttemp.UV.x = temp.x;
+		verttemp.UV.y = temp.y;
+		verttemp.Nrm.x = temp2.x;
+		verttemp.Nrm.y = temp2.y;
+		out_vertices.push_back(verttemp);
+		Index.push_back(i);
+
 	}
 
-	for (unsigned int i = 0; i < temp_vertices.size(); i++)
-		out_vertices.push_back(temp_vertices[i]);
 
-	for (unsigned int i = 0; i < temp_uvs.size(); i++)
-	{
-		out_uvs.push_back(temp_uvs[i]);
-	}
-
-
-
+	return true;
 
 
 
@@ -824,6 +939,12 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 	//	Translate[3] = 0.0f;
 #pragma endregion
 
+	SetupGraphics::GetInstance()->veiwport2.Height = 128;
+	SetupGraphics::GetInstance()->veiwport2.Width = 128;
+	SetupGraphics::GetInstance()->veiwport2.TopLeftX = 0;
+	SetupGraphics::GetInstance()->veiwport2.TopLeftY = 0;
+	SetupGraphics::GetInstance()->veiwport2.MaxDepth = 0.01;
+	SetupGraphics::GetInstance()->veiwport2.MinDepth = 0;
 
 #if Lab9
 #pragma region Setting Up the World,Veiw,Projection Matrix
@@ -1015,9 +1136,7 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 	//CreateVertexBuffer(Triangle, 22, &VertexBuffer);
 #pragma endregion
 	CreateVertexBuffer(Cube, 776, &VertexBuffer);
-	CreateVertexBuffer(Triangle, 22, &Vertex_Buffer_Star);
-
-
+	CreateVertexBuffer(Triangle, 22, &StarVertexBuffer);
 
 #endif
 #if Lab10
@@ -1048,7 +1167,7 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 	XMMATRIX matrix1;
 	matrix1 = XMLoadFloat4x4(&VeiwMatrix);
 	matrix1 = XMMatrixIdentity();
-	matrix1 = XMMatrixMultiply(matrix1, XMMatrixTranslation(0.0f, 0.0f, 0.0f));
+	matrix1 = XMMatrixMultiply(matrix1, XMMatrixTranslation(-4.0f, -2.0f, 7.0f));
 	VeiwMAtrix = Matrix4x4Identity();
 	VeiwMAtrix = Matrix4X4Multiplication(&Translation(_XYZ), &VeiwMAtrix);
 	XMVECTOR vertex;
@@ -1077,103 +1196,69 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 	XMStoreFloat4x4(&WorldMatrix, matrix2);
 	/*WorldMatrix = Matrix4x4Identity();
 	WorldMatrix = Translation(_xyz)*/;
-
+	XMFLOAT4X4 Gworldmatrix;
 	WorldMatrixGrid = Matrix4x4Identity();
 	WorldMatrixGrid = Translation(XYZ);
-#pragma endregion
-	/*float Spacing = 0.1f;
-	float startx = -0.5f;
-	float startz = -0.5f;
-	float endX = 3.5f;
-	float endZ = 1.5f;
-	for (int i = 0; i < 44; i += 2)
-	{
-	Grid[i].m_position[0] = startx;
-	Grid[i].m_position[1] = 0;
-	Grid[i].m_position[2] = startz;
-	Grid[i].m_position[3] = 1;
+	matrix1 = XMLoadFloat4x4(&Gworldmatrix);
+	matrix1 = XMMatrixIdentity();
+	matrix1 = XMMatrixTranslation(2.0f, 0.0f, 0);
+	matrix1 = XMMatrixMultiply(XMMatrixRotationY(180), matrix1);
+	//matrix1 = XMMatrixScaling(0.01f, 0.01f, 0.01f);
+	XMStoreFloat4x4(&Gworldmatrix, matrix1);
 
-	Grid[i + 1].m_position[0] = endX;
-	Grid[i + 1].m_position[1] = 0;
-	Grid[i + 1].m_position[2] = startz;
-	Grid[i + 1].m_position[3] = 1;
+	GundamWorldMatrix.m_WorldMatrix = Gworldmatrix;
 
-	startz += Spacing;*/
+	matrix1 = XMLoadFloat4x4(&Gworldmatrix);
+	matrix1 = XMMatrixIdentity();
+	matrix1 = XMMatrixTranslation(-2.0f, 0.0f, 0);
+	matrix1 = XMMatrixMultiply(XMMatrixRotationY(180), matrix1);
+	XMStoreFloat4x4(&Gworldmatrix, matrix1);
+	FreedomGundamWorldMatrix.m_WorldMatrix = Gworldmatrix;
 
 
 
-	//Spacing = 0.2f;
-	//startx = -0.5f;
-	//endX = 1.5f;
-	//startz = -0.5f;
-	//endZ = 1.5f;
-
-	//for (int i = 45; i < 89; i += 2)
-	//{
-	//	Grid[i].m_position[0] = startx;
-	//	Grid[i].m_position[1] = 0;
-	//	Grid[i].m_position[2] = startz;
-	//	Grid[i].m_position[3] = 1;
-
-	//	Grid[i + 1].m_position[0] = startx;
-	//	Grid[i + 1].m_position[1] = 0;
-	//	Grid[i + 1].m_position[2] = endZ;
-	//	Grid[i + 1].m_position[3] = 1;
-
-	//	startx += Spacing;
-
-	//};
-
-	//CreateVertexBuffer(Grid, 89, &GridVertexBuffer);
-
-	//unsigned int Lines[] = {
-
-	//	0, 1,
-	//	2, 3,
-	//	4, 5,
-	//	6, 7,
-	//	8, 9,
-	//	10, 11,
-	//	12, 13,
-	//	14, 15,
-	//	16, 17,
-	//	18, 19,
-	//	20, 21,
-	//	22, 23,
-	//	24, 25,
-	//	26, 27,
-	//	28, 29,
-	//	30, 31,
-	//	32, 33,
-	//	34, 35,
-	//	36, 37,
-	//	38, 39,
-	//	40, 41,
-	//	45, 46,
-	//	47, 48,
-	//	49, 50,
-	//	51, 52,
-	//	53, 54,
-	//	55, 56,
-	//	57, 58,
-	//	59, 60,
-	//	61, 62,
-	//	63, 64,
-	//	65, 66,
-	//	67, 68,
-	//	69, 70,
-	//	71, 72,
-	//	73, 74,
-	//	75, 76,
-	//	77, 78,
-	//	79, 80,
-	//	81, 82,
-	//	83, 84,
-	//	85, 86,
+	matrix1 = XMLoadFloat4x4(&Gworldmatrix);
+	matrix1 = XMMatrixIdentity();
+	matrix1 = XMMatrixTranslation(-2.0f, 0.0f, 2.0f);
+	matrix1 = XMMatrixMultiply(XMMatrixRotationY(180), matrix1);
+	XMStoreFloat4x4(&Gworldmatrix, matrix1);
+	DuelGundamWorldMatrix.m_WorldMatrix = Gworldmatrix;
 
 
-	//};
-	//CreateIndexBuffer(Lines, ARRAYSIZE(Lines), &m_GridIndexBuffer);
+
+
+	matrix1 = XMLoadFloat4x4(&Gworldmatrix);
+	matrix1 = XMMatrixIdentity();
+	matrix1 = XMMatrixTranslation(2.0f, 0.0f, 2.0f);
+	matrix1 = XMMatrixMultiply(XMMatrixRotationY(180), matrix1);
+	XMStoreFloat4x4(&Gworldmatrix, matrix1);
+	AgeisGundamWorldMatrix.m_WorldMatrix = Gworldmatrix;
+
+	matrix1 = XMLoadFloat4x4(&Gworldmatrix);
+	matrix1 = XMMatrixIdentity();
+	matrix1 = XMMatrixTranslation(4.0f, 0.0f, 0.0f);
+	matrix1 = XMMatrixMultiply(XMMatrixRotationY(180), matrix1);
+	XMStoreFloat4x4(&Gworldmatrix, matrix1);
+	WingZeroGundamWorldMatrix.m_WorldMatrix = Gworldmatrix;
+
+
+	matrix1 = XMLoadFloat4x4(&Gworldmatrix);
+	matrix1 = XMMatrixIdentity();
+
+	//matrix1 = XMMatrixMultiply(XMMatrixRotationY(180), matrix1);
+	matrix1 = XMMatrixScaling(0.01f, 0.01f, 0.01f);
+	matrix1 = XMMatrixTranslation(0.0f, 10.0f, 0.0f);
+	XMStoreFloat4x4(&Gworldmatrix, matrix1);
+	StarWorldMatrix.m_WorldMatrix = Gworldmatrix;
+
+	matrix1 = XMLoadFloat4x4(&Gworldmatrix);
+	matrix1 = XMMatrixIdentity();
+	matrix1 = XMMatrixTranslation(8.0f, 0.0f, 2.0f);
+	matrix1 = XMMatrixMultiply(XMMatrixRotationY(180), matrix1);
+	XMStoreFloat4x4(&Gworldmatrix, matrix1);
+	SkyworldMatrix.m_WorldMatrix = Gworldmatrix;
+#pragma endregion 
+
 	numberanimations.frame = 0;
 	numberanimations.totalframes = 4;
 	numberanimations.width = 512 / 4;
@@ -1198,8 +1283,9 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 	// this is the grid Vertex buffer
 	SetupGraphics::GetInstance()->GetDevice()->CreatePixelShader(GridPixelShader, sizeof(GridPixelShader), NULL, &m_GridPixalShader);
 	SetupGraphics::GetInstance()->GetDevice()->CreateVertexShader(GridVertexShader, sizeof(GridVertexShader), NULL, &m_GridVertexShader);
+	SetupGraphics::GetInstance()->GetDevice()->CreateVertexShader(SkyboxShader, sizeof(SkyboxShader), NULL, &SkyboxVertexshader);
 	SetupGraphics::GetInstance()->GetDevice()->CreatePixelShader(PixelShaderGundam, sizeof(PixelShaderGundam), NULL, &GundamPixalShader);
-
+	SetupGraphics::GetInstance()->GetDevice()->CreatePixelShader(SkyboxPixelShader, sizeof(SkyboxPixelShader), NULL, &skyboxPixalshader);
 
 #pragma endregion
 #pragma region Input layouts  and Creating them plus Creating a raster blend state
@@ -1210,7 +1296,7 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "UVCOORD", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-		{ "NmrCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 }
+		{ "NmrCOORD", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 }
 
 	};
 
@@ -1278,11 +1364,20 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 
 	};
 	CreateIndexBuffer(Cube_indicies, ARRAYSIZE(Cube_indicies), &m_IndexBuffer);
-	CreateIndexBuffer(verts, ARRAYSIZE(verts), &m_Index_Buffer_Star);
+	CreateIndexBuffer(verts, ARRAYSIZE(verts), &StarIndexBuffer);
 
 #endif
 #pragma region Making ConstBuffers making a zbuffer 
 
+	Directional.LightDirection.x = 1;
+	Directional.LightDirection.y = 1;
+	Directional.LightDirection.z = 1;
+
+	Directional.m_diffuseColor.x = 1.0f;
+	Directional.m_diffuseColor.y = 1.0f;
+	Directional.m_diffuseColor.z = 10.0f;
+
+	CreateConstBuffer(&m_constbufferlight, Directional);
 	CreateConstBuffer(&m_ConstbufferObject, vs_shaderWorld);
 	CreateConstBuffer(&m_ConstbufferSeen, vs_shaderVeiwProjection);
 	CreateConstBuffer(&PixalBuffer, numberanimations);
@@ -1297,34 +1392,177 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 
 #pragma region Load Object file to Be Renderd
 
-	LoadObj("GundamStrike.obj", vertices, uvs, normals, Index);
+
+#pragma region Freedom Gundam Loading
+
+
+	LoadObj("StrikeGundam.obj", vertices, uvs, normals, Index);
 
 	//Make_A_Model(vertices, Gundam,Index.size(), &Vertex_Buffer_Star, &m_Index_Buffer_Star,Index);
 	for (unsigned int i = 0; i < vertices.size(); i++)
 	{
-		Gundam[i].m_position.x = (vertices[i].x * 0.01f);
-		Gundam[i].m_position.y = (vertices[i].y * 0.01f);
-		Gundam[i].m_position.z = (vertices[i].z * 0.01f);
+		Gundam[i].m_position.x = vertices[i].m_position.x * 0.01f;
+		Gundam[i].m_position.y = vertices[i].m_position.y * 0.01f;
+		Gundam[i].m_position.z = vertices[i].m_position.z * 0.01f;
+		Gundam[i].UV.x = vertices[i].UV.x;
+		Gundam[i].UV.y = vertices[i].UV.y;
+
 		Gundam[i].m_position.w = 1;
+		Gundam[i].Nrm.x = vertices[i].Nrm.x;
+		Gundam[i].Nrm.y = vertices[i].Nrm.y;
 
 
 	}
-	for (unsigned int i = 0; i < uvs.size(); i++)
-	{
-		Gundam[i].UV.x = uvs[i].x;
-		Gundam[i].UV.y = uvs[i].y;
-	}
-	unsigned int Indecies[10359];
+
+	unsigned int Indecies[9897];
 	for (unsigned int i = 0; i < Index.size(); i++)
 		Indecies[i] = Index[i];
 
 
-	CreateVertexBuffer(Gundam, 4211, &Vertex_Buffer_Star);
+	CreateVertexBuffer(Gundam, 9897, &Vertex_Buffer_Star);
 	CreateIndexBuffer(Indecies, sizeof(Indecies), &m_Index_Buffer_Star);
+#pragma endregion
+
+	vertices.clear();
+	uvs.clear();
+	Index.clear();
+	normals.clear();
+
+#pragma region Strike Gundam Loading
+
+	FreedomGundam = new SIMPLE_VERTEX[10359];
+
+	LoadObj("GundamStrike.obj", vertices, uvs, normals, Index);
+	for (unsigned int i = 0; i < vertices.size(); i++)
+	{
+
+		FreedomGundam[i].m_position.x = (vertices[i].m_position.x * 0.01);
+		FreedomGundam[i].m_position.y = (vertices[i].m_position.y* 0.01);
+		FreedomGundam[i].m_position.z = (vertices[i].m_position.z* 0.01);
+		FreedomGundam[i].m_position.w = 0;
+		FreedomGundam[i].UV.x = vertices[i].UV.x;
+		FreedomGundam[i].UV.y = vertices[i].UV.y;
+		FreedomGundam[i].Nrm.x = vertices[i].Nrm.x;
+		FreedomGundam[i].Nrm.y = vertices[i].Nrm.y;
+
+	}
+	CreateVertexBuffer(FreedomGundam, 10359, &Vertex_Buffer_FreedomGundam);
+	unsigned int Indecies1[10359];
+	for (unsigned int i = 0; i < Index.size(); i++)
+		Indecies1[i] = Index[i];
+	CreateIndexBuffer(Indecies1, sizeof(Indecies1), &m_Index_Buffer_FreedomGundam);
+#pragma endregion
+
+	vertices.clear();
+	Index.clear();
+
+#pragma region Duel Gundam Loading
+
+	DuelGundam = new SIMPLE_VERTEX[10761];
+	LoadObj("Duel Gundam.obj", vertices, uvs, normals, Index);
+	for (unsigned int i = 0; i < vertices.size(); i++)
+	{
+
+		DuelGundam[i].m_position.x = (vertices[i].m_position.x * 0.01);
+		DuelGundam[i].m_position.y = (vertices[i].m_position.y* 0.01);
+		DuelGundam[i].m_position.z = (vertices[i].m_position.z* 0.01);
+		DuelGundam[i].m_position.w = 0;
+		DuelGundam[i].UV.x = vertices[i].UV.x;
+		DuelGundam[i].UV.y = vertices[i].UV.y;
+		DuelGundam[i].Nrm.x = vertices[i].Nrm.x;
+		DuelGundam[i].Nrm.y = vertices[i].Nrm.y;
+	}
+	CreateVertexBuffer(DuelGundam, 10761, &Vertex_Buffer_DuelGundam);
+	unsigned int Indecies2[10761];
+	for (unsigned int i = 0; i < Index.size(); i++)
+		Indecies2[i] = Index[i];
+	CreateIndexBuffer(Indecies2, sizeof(Indecies2), &m_Index_Buffer_DuelGundam);
+#pragma endregion
+
+	vertices.clear();
+	Index.clear();
+#pragma region Ageis Gundam Loading
+
+	AgeisGundam = new SIMPLE_VERTEX[9000];
+	LoadObj("Aegis Gundam Ren.obj", vertices, uvs, normals, Index);
+	for (unsigned int i = 0; i < vertices.size(); i++)
+	{
+
+		AgeisGundam[i].m_position.x = (vertices[i].m_position.x * 0.01);
+		AgeisGundam[i].m_position.y = (vertices[i].m_position.y* 0.01);
+		AgeisGundam[i].m_position.z = (vertices[i].m_position.z* 0.01);
+		AgeisGundam[i].m_position.w = 0;
+		AgeisGundam[i].UV.x = vertices[i].UV.x;
+		AgeisGundam[i].UV.y = vertices[i].UV.y;
+		AgeisGundam[i].Nrm.x = vertices[i].Nrm.x;
+		AgeisGundam[i].Nrm.y = vertices[i].Nrm.y;
+
+	}
+	CreateVertexBuffer(AgeisGundam, 9000, &Vertex_Buffer_AgeisGundam);
+	unsigned int Indecies3[9000];
+	for (unsigned int i = 0; i < Index.size(); i++)
+		Indecies3[i] = Index[i];
+	CreateIndexBuffer(Indecies3, sizeof(Indecies3), &m_Index_Buffer_AgeisGundam);
+#pragma endregion
+
+
+	vertices.clear();
+	Index.clear();
+#pragma region WingZero Gundam Loading
+
+	WingZeroGundam = new SIMPLE_VERTEX[8775];
+	LoadObj("Wing Gundam Zero - Ren.obj", vertices, uvs, normals, Index);
+	for (unsigned int i = 0; i < vertices.size(); i++)
+	{
+
+		WingZeroGundam[i].m_position.x = (vertices[i].m_position.x * 0.01);
+		WingZeroGundam[i].m_position.y = (vertices[i].m_position.y* 0.01);
+		WingZeroGundam[i].m_position.z = (vertices[i].m_position.z* 0.01);
+		WingZeroGundam[i].m_position.w = 0;
+		WingZeroGundam[i].UV.x = vertices[i].UV.x;
+		WingZeroGundam[i].UV.y = vertices[i].UV.y;
+		WingZeroGundam[i].Nrm.x = vertices[i].Nrm.x;
+		WingZeroGundam[i].Nrm.y = vertices[i].Nrm.y;
+
+	}
+	CreateVertexBuffer(WingZeroGundam, 8775, &Vertex_Buffer_WingZeroGundam);
+	unsigned int Indecies4[8775];
+	for (unsigned int i = 0; i < Index.size(); i++)
+		Indecies4[i] = Index[i];
+	CreateIndexBuffer(Indecies4, sizeof(Indecies4), &m_Index_Buffer_WingZeroGundam);
+#pragma endregion
+	vertices.clear();
+	Index.clear();
+
+
+	Cubeskybox = new SIMPLE_VERTEX[36];
+	LoadObj("Cube.obj", vertices, uvs, normals, Index);
+	for (unsigned int i = 0; i < vertices.size(); i++)
+	{
+
+		Cubeskybox[i].m_position.x = (vertices[i].m_position.x);
+		Cubeskybox[i].m_position.y = (vertices[i].m_position.y);
+		Cubeskybox[i].m_position.z = (vertices[i].m_position.z);
+		Cubeskybox[i].m_position.w = 0;
+		Cubeskybox[i].UV.x = vertices[i].UV.x;
+		Cubeskybox[i].UV.y = vertices[i].UV.y;
+		Cubeskybox[i].Nrm.x = vertices[i].Nrm.x;
+		Cubeskybox[i].Nrm.y = vertices[i].Nrm.y;
+
+	}
+	CreateVertexBuffer(Cubeskybox, 36, &VertexbufferSkybox);
+	unsigned int Indecies5[36];
+	for (unsigned int i = 0; i < Index.size(); i++)
+		Indecies5[i] = Index[i];
+	CreateIndexBuffer(Indecies5, sizeof(Indecies5), &IndexSkyboxBuffer);
+#pragma endregion
 
 	CreateDDSTextureFromFile(SetupGraphics::GetInstance()->GetDevice(), L"FreedomRen.dds", &m_Gundam, &m_Gundamveiw);
-
-
+	CreateDDSTextureFromFile(SetupGraphics::GetInstance()->GetDevice(), L"Strike Gundam - Ren.dds", &m_StrikeGundam, &m_StrikeGundamveiw);
+	CreateDDSTextureFromFile(SetupGraphics::GetInstance()->GetDevice(), L"Duel Gundam.dds", &m_DuelGundam, &m_DuelGundamveiw);
+	CreateDDSTextureFromFile(SetupGraphics::GetInstance()->GetDevice(), L"Aegis Gundam - Ren.dds", &m_AgeisGundam, &m_AgeisGundamveiw);
+	CreateDDSTextureFromFile(SetupGraphics::GetInstance()->GetDevice(), L"Wing Gundam Zero - Ren.dds", &m_WingZeroGundam, &m_WingZeroGundamveiw);
+	CreateDDSTextureFromFile(SetupGraphics::GetInstance()->GetDevice(), L"SunsetSkybox.dds", NULL, &SkyboxResourceVeiw);
 
 #pragma endregion
 }
@@ -1360,7 +1598,7 @@ bool DEMO_APP::Run()
 	float temp[4] = { 0, 0.5, 0, 0 };
 	//	WorldMatrix = Translation(temp);
 	//WorldMatrix = Inverse(WorldMatrix);
-	float m_position[4];
+	//	float m_position[4];
 	/*m_position[0] = WorldMatrix._41;
 	m_position[1] = WorldMatrix._42;
 	m_position[2] = WorldMatrix._43;
@@ -1370,9 +1608,10 @@ bool DEMO_APP::Run()
 	XMMATRIX matrix2;
 	matrix1 = XMLoadFloat4x4(&WorldMatrix);
 	matrix1 = XMMatrixIdentity();
-	matrix1 = XMMatrixMultiply(XMMatrixRotationY(m_time.Delta()), matrix1);
-	matrix1 = XMMatrixMultiply( matrix1,XMMatrixRotationX(m_time.Delta()));
+	matrix1 = XMMatrixMultiply(matrix1, XMMatrixRotationY(m_time.Delta()));
+	//matrix1 = XMMatrixMultiply(matrix1, XMMatrixRotationX(m_time.Delta()));
 	XMStoreFloat4x4(&WorldMatrix, matrix1);
+	GundamWorldMatrix.m_WorldMatrix = WorldMatrix;
 	/* = Matrix4X4Multiplication(&Matrix4x4_Roation_on_Y_Axis(), &WorldMatrix);
 	WorldMatrix = Matrix4X4Multiplication(&Matrix4x4_Roation_on_X_Axis(m_time.Delta()), &WorldMatrix);*/
 
@@ -1385,9 +1624,9 @@ bool DEMO_APP::Run()
 	POINT m_mouse;
 	HCURSOR m_cursor;
 
-	
+
 	vs_shaderWorld.m_WorldMatrix = WorldMatrix;
-	
+
 
 
 	MY_Matrix NewViewMatrix = VeiwMAtrix;
@@ -1395,9 +1634,9 @@ bool DEMO_APP::Run()
 	if (GetAsyncKeyState('W') && m_timer <= 0)
 	{
 		m_timer = 24.0;
-	//	Translate[2] -= m_time.Delta() * 15.5f;
+		//	Translate[2] -= m_time.Delta() * 15.5f;
 		matrix1 = XMLoadFloat4x4(&VeiwMatrix);
-		matrix1 = XMMatrixMultiply(XMMatrixTranslation(0,0 , -m_time.Delta() * 15.5f), matrix1);
+		matrix1 = XMMatrixMultiply(XMMatrixTranslation(0, 0, -m_time.Delta() * 20.5f), matrix1);
 		XMStoreFloat4x4(&VeiwMatrix, matrix1);
 		//VeiwMAtrix = Matrix4X4Multiplication(&Translation(Translate), &VeiwMAtrix);
 	}
@@ -1407,7 +1646,7 @@ bool DEMO_APP::Run()
 		m_timer = 24.0;
 		Translate[2] += m_time.Delta()* 15.5f;
 		matrix1 = XMLoadFloat4x4(&VeiwMatrix);
-		matrix1 = XMMatrixMultiply(XMMatrixTranslation(0,0,m_time.Delta() * 15.5f), matrix1);
+		matrix1 = XMMatrixMultiply(XMMatrixTranslation(0, 0, m_time.Delta() * 20.5f), matrix1);
 		XMStoreFloat4x4(&VeiwMatrix, matrix1);
 		VeiwMAtrix = Matrix4X4Multiplication(&Translation(Translate), &VeiwMAtrix);
 	}
@@ -1415,21 +1654,21 @@ bool DEMO_APP::Run()
 	if (GetAsyncKeyState('A') && m_timer <= 0)
 	{
 		m_timer = 24.0;
-		Translate[0] -= m_time.Delta() * 15.5f;
+		//		Translate[0] -= m_time.Delta() * 15.5f;
 		VeiwMAtrix = Matrix4X4Multiplication(&Translation(Translate), &VeiwMAtrix);
 
 		matrix1 = XMLoadFloat4x4(&VeiwMatrix);
-		matrix1 = XMMatrixMultiply(XMMatrixTranslation(m_time.Delta() * 15.5f,0,0), matrix1);
+		matrix1 = XMMatrixMultiply(XMMatrixTranslation(m_time.Delta() * 20.5f, 0, 0), matrix1);
 		XMStoreFloat4x4(&VeiwMatrix, matrix1);
 	}
 
 	if (GetAsyncKeyState('D') && m_timer <= 0)
 	{
 		m_timer = 24.0;
-		Translate[0] += m_time.Delta() * 15.5f;
+		//		Translate[0] += m_time.Delta() * 15.5f;
 		VeiwMAtrix = Matrix4X4Multiplication(&Translation(Translate), &VeiwMAtrix);
 		matrix1 = XMLoadFloat4x4(&VeiwMatrix);
-		matrix1 = XMMatrixMultiply(XMMatrixTranslation(-m_time.Delta() * 15.5f, 0, 0), matrix1);
+		matrix1 = XMMatrixMultiply(XMMatrixTranslation(-m_time.Delta() * 20.5f, 0, 0), matrix1);
 		XMStoreFloat4x4(&VeiwMatrix, matrix1);
 	}
 
@@ -1437,11 +1676,11 @@ bool DEMO_APP::Run()
 	{
 		m_timer = 24.0;
 		//Translate[1] += Translate[1];
-		Translate[1] -= m_time.Delta()*15.7f;
+		//		Translate[1] -= m_time.Delta()*15.7f;
 		VeiwMAtrix = Matrix4X4Multiplication(&Translation(Translate), &VeiwMAtrix);
 
 		matrix1 = XMLoadFloat4x4(&VeiwMatrix);
-		matrix1 = XMMatrixMultiply(XMMatrixTranslation(0,m_time.Delta() * 15.5f, 0), matrix1);
+		matrix1 = XMMatrixMultiply(XMMatrixTranslation(0, m_time.Delta() * 20.5f, 0), matrix1);
 		XMStoreFloat4x4(&VeiwMatrix, matrix1);
 	}
 	else if (GetAsyncKeyState(VK_LSHIFT) && m_timer <= 0)
@@ -1451,7 +1690,7 @@ bool DEMO_APP::Run()
 		VeiwMAtrix = Matrix4X4Multiplication(&Translation(Translate), &VeiwMAtrix);
 
 		matrix1 = XMLoadFloat4x4(&VeiwMatrix);
-		matrix1 = XMMatrixMultiply(XMMatrixTranslation(0, -m_time.Delta() * 15.5f, 0), matrix1);
+		matrix1 = XMMatrixMultiply(XMMatrixTranslation(0, -m_time.Delta() * 20.5f, 0), matrix1);
 		XMStoreFloat4x4(&VeiwMatrix, matrix1);
 	}
 	else if (GetCursorPos(&m_mouse) && GetAsyncKeyState(VK_LBUTTON) && m_timer <= 0)
@@ -1504,27 +1743,56 @@ bool DEMO_APP::Run()
 
 
 
-	
 
-		vs_shaderVeiwProjection.m_VeiwMatrix = VeiwMatrix;
-	
+#pragma region Setting Maps 
+
+	vs_shaderVeiwProjection.m_VeiwMatrix = VeiwMatrix;
 	numberanimations.height = (numberanimations.frame / numberanimations.totalframes) * numberanimations.width;
 	Map_UnMap_Variables(&PixalBuffer, numberanimations);
 	Map_UnMap_Variables(&m_ConstbufferObject, vs_shaderWorld);
 	Map_UnMap_Variables(&m_ConstbufferSeen, vs_shaderVeiwProjection);
-
-
 	UINT m_srtide = sizeof(SIMPLE_VERTEX);
 	UINT m_zero = 0;
 	SetupGraphics::GetInstance()->GetDeviceContext()->ClearDepthStencilView(pDSV, D3D11_CLEAR_FLAG::D3D11_CLEAR_DEPTH, 1, NULL);
-
-	float ARGB[] = { 0, 0, 0, 1 };
+	float ARGB[] = { 0, 1, 0, 1 };
 	ClearBuffer(ARGB);
 	SetupGraphics::GetInstance()->GetDeviceContext()->OMSetBlendState(m_blendstate, 0, 0xFFFFFFFF);
-#pragma region Setting All Your Variables to do your first draw 
+	
+	//SetupGraphics::GetInstance()->GetDeviceContext()->OMSetRenderTargets(1, SetupGraphics::GetInstance()->GetRenderTargetView(), pDSV);
+#pragma endregion
+//#pragma region Setting All Your Variables to do your Fidth draw 
 
+	XMFLOAT4X4 vm;
+	vm = vs_shaderVeiwProjection.m_VeiwMatrix;
+	matrix1 = XMLoadFloat4x4(&vm);
+	matrix1 = XMMatrixInverse(NULL, matrix1);
+	XMStoreFloat4x4(&vm, matrix1);
+	SkyworldMatrix.m_WorldMatrix = vm;
+	Map_UnMap_Variables(&m_ConstbufferObject, SkyworldMatrix);
 	SetupGraphics::GetInstance()->GetDeviceContext()->PSSetSamplers(0, 1, &Sampler);
 	SetupGraphics::GetInstance()->GetDeviceContext()->RSSetState(g_pRasterState);
+	SetupGraphics::GetInstance()->GetDeviceContext()->IASetVertexBuffers(0, 1, &VertexbufferSkybox, &m_srtide, &m_zero);
+	SetupGraphics::GetInstance()->GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	SetupGraphics::GetInstance()->GetDeviceContext()->IASetInputLayout(m_InputLayout);
+
+	SetupGraphics::GetInstance()->GetDeviceContext()->IASetIndexBuffer(IndexSkyboxBuffer, DXGI_FORMAT_R32_UINT, 0);
+	////VS
+	SetupGraphics::GetInstance()->GetDeviceContext()->VSSetShader(SkyboxVertexshader, NULL, 0);
+	SetupGraphics::GetInstance()->GetDeviceContext()->VSSetConstantBuffers(0, 1, &m_ConstbufferObject);
+	SetupGraphics::GetInstance()->GetDeviceContext()->VSSetConstantBuffers(1, 1, &m_ConstbufferSeen);
+	////RS
+
+//	////PS
+	SetupGraphics::GetInstance()->GetDeviceContext()->PSSetShader(skyboxPixalshader, NULL, 0);
+	SetupGraphics::GetInstance()->GetDeviceContext()->PSSetShaderResources(0, 1, &SkyboxResourceVeiw);
+	SetupGraphics::GetInstance()->GetDeviceContext()->OMSetRenderTargets(1, SetupGraphics::GetInstance()->GetRenderTargetView(), pDSV);
+	SetupGraphics::GetInstance()->GetDeviceContext()->DrawIndexed(36, 0, 0);
+	SetupGraphics::GetInstance()->GetDeviceContext()->ClearDepthStencilView(pDSV, D3D11_CLEAR_FLAG::D3D11_CLEAR_DEPTH, 1, NULL);
+//#pragma endregion
+#pragma region Setting All Your Variables to do your first draw 
+	Map_UnMap_Variables(&m_constbufferlight, Directional);
+	//SetupGraphics::GetInstance()->GetDeviceContext()->PSSetSamplers(0, 1, &Sampler);
+	//SetupGraphics::GetInstance()->GetDeviceContext()->RSSetState(g_pRasterState);
 	SetupGraphics::GetInstance()->GetDeviceContext()->IASetVertexBuffers(0, 1, &VertexBuffer, &m_srtide, &m_zero);
 	SetupGraphics::GetInstance()->GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	SetupGraphics::GetInstance()->GetDeviceContext()->IASetInputLayout(m_InputLayout);
@@ -1547,33 +1815,89 @@ bool DEMO_APP::Run()
 	SetupGraphics::GetInstance()->GetDeviceContext()->PSSetShaderResources(0, 1, &ResourceVeiw);
 	//OM
 	//m_deviceContext->OMSetDepthStencilState(DepthState, 1);SSSSSSSSSSSSSSSSSSSWWWWWWWWWWWWWWWWWWWWWWSSSSSSSSSSSSSSSSSSSSSSSS
-	SetupGraphics::GetInstance()->GetDeviceContext()->OMSetRenderTargets(1, SetupGraphics::GetInstance()->GetRenderTargetView(), pDSV);
 
-	SetupGraphics::GetInstance()->GetDeviceContext()->DrawIndexed(1692, 0, 0);
+
+	//SetupGraphics::GetInstance()->GetDeviceContext()->DrawIndexed(1692, 0, 0);
 #pragma endregion
 #pragma region Setting all the variables To do the Second Draw 
 
 	SetupGraphics::GetInstance()->GetDeviceContext()->RSSetState(g_pRasterState2);
 
+	Map_UnMap_Variables(&m_ConstbufferObject, StarWorldMatrix);
 	/*Map_UnMap_Variables(&m_ConstbufferSeen, vs_shaderVeiwProjection);
 	Map_UnMap_Variables(&m_ConstbufferObject, vs_worldMatrix);
-*/
+	*/
 
 
-	SetupGraphics::GetInstance()->GetDeviceContext()->IASetVertexBuffers(0, 1, &GridVertexBuffer, &m_srtide, &m_zero);
-	SetupGraphics::GetInstance()->GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
+	SetupGraphics::GetInstance()->GetDeviceContext()->IASetVertexBuffers(0, 1, &StarVertexBuffer, &m_srtide, &m_zero);
+	SetupGraphics::GetInstance()->GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	SetupGraphics::GetInstance()->GetDeviceContext()->IASetInputLayout(m_InputLayoutGrid);
-	SetupGraphics::GetInstance()->GetDeviceContext()->IASetIndexBuffer(m_GridIndexBuffer, DXGI_FORMAT_R32_UINT, 0);
+	SetupGraphics::GetInstance()->GetDeviceContext()->IASetIndexBuffer(StarIndexBuffer, DXGI_FORMAT_R32_UINT, 0);
 
 
 	SetupGraphics::GetInstance()->GetDeviceContext()->VSSetConstantBuffers(0, 1, &m_ConstbufferObject);
 	SetupGraphics::GetInstance()->GetDeviceContext()->VSSetConstantBuffers(1, 1, &m_ConstbufferSeen);
-	SetupGraphics::GetInstance()->GetDeviceContext()->VSSetShader(m_GridVertexShader, NULL, 0);
+	SetupGraphics::GetInstance()->GetDeviceContext()->VSSetShader(m_VertexShader, NULL, 0);
 	SetupGraphics::GetInstance()->GetDeviceContext()->PSSetShader(m_GridPixalShader, NULL, 0);
 
-	SetupGraphics::GetInstance()->GetDeviceContext()->DrawIndexed(84, 0, 0);
+	SetupGraphics::GetInstance()->GetDeviceContext()->DrawIndexed(120, 0, 0);
 #pragma endregion
 #pragma region Setting All Your Variables to do your Thrid draw 
+	if (GetAsyncKeyState(VK_LEFT) & 0x01)
+	{
+		Directional.LightDirection.x -= 2.0f;
+		//Directional.m_diffuseColor.x += 20.0f;
+		/*	XMFLOAT3 temp;
+			XMVECTOR temp2;
+			temp = Directional.LightDirection;
+			temp2 = XMLoadFloat3(&temp);
+			XMVector3Normalize(temp2);
+			XMStoreFloat3(&Directional.LightDirection, temp2);*/
+
+	}
+
+	if (GetAsyncKeyState(VK_RIGHT) & 0x01)
+	{
+		Directional.LightDirection.x += 2.0f;
+	}
+
+	if (GetAsyncKeyState(VK_UP) & 0x01)
+	{
+		Directional.LightDirection.y -= 2.0f;
+		//Directional.m_diffuseColor.x += 20.0f;
+		/*	XMFLOAT3 temp;
+		XMVECTOR temp2;
+		temp = Directional.LightDirection;
+		temp2 = XMLoadFloat3(&temp);
+		XMVector3Normalize(temp2);
+		XMStoreFloat3(&Directional.LightDirection, temp2);*/
+
+	}
+
+	if (GetAsyncKeyState(VK_DOWN) & 0x01)
+	{
+		Directional.LightDirection.y += 2.0f;
+	}
+
+	if (GetAsyncKeyState(VK_RCONTROL) & 0x01 && GetAsyncKeyState(VK_UP) & 0x01)
+	{
+		Directional.LightDirection.z -= 2.0f;
+		//Directional.m_diffuseColor.x += 20.0f;
+		/*	XMFLOAT3 temp;
+		XMVECTOR temp2;
+		temp = Directional.LightDirection;
+		temp2 = XMLoadFloat3(&temp);
+		XMVector3Normalize(temp2);
+		XMStoreFloat3(&Directional.LightDirection, temp2);*/
+
+	}
+
+	if (GetAsyncKeyState(VK_RCONTROL) & 0x01 && GetAsyncKeyState(VK_DOWN) & 0x01)
+	{
+		Directional.LightDirection.z += 2.0f;
+	}
+
+	Map_UnMap_Variables(&m_ConstbufferObject, GundamWorldMatrix);
 
 	SetupGraphics::GetInstance()->GetDeviceContext()->IASetVertexBuffers(0, 1, &Vertex_Buffer_Star, &m_srtide, &m_zero);
 	SetupGraphics::GetInstance()->GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -1585,14 +1909,223 @@ bool DEMO_APP::Run()
 	SetupGraphics::GetInstance()->GetDeviceContext()->VSSetConstantBuffers(0, 1, &m_ConstbufferObject);
 	SetupGraphics::GetInstance()->GetDeviceContext()->VSSetConstantBuffers(1, 1, &m_ConstbufferSeen);
 	////RS
-	
+
 	////PS
 	SetupGraphics::GetInstance()->GetDeviceContext()->PSSetShader(GundamPixalShader, NULL, 0);
 	SetupGraphics::GetInstance()->GetDeviceContext()->PSSetShaderResources(0, 1, &m_Gundamveiw);
+	SetupGraphics::GetInstance()->GetDeviceContext()->PSSetConstantBuffers(0, 1, &m_constbufferlight);
 	////OM
-	SetupGraphics::GetInstance()->GetDeviceContext()->DrawIndexed(Index.size(), 0, 0);
+	SetupGraphics::GetInstance()->GetDeviceContext()->DrawIndexed(9897, 0, 0);
+#pragma endregion
+#pragma region Setting All Your Variables to do your Fourth draw 
+	Map_UnMap_Variables(&m_ConstbufferObject, FreedomGundamWorldMatrix);
+	SetupGraphics::GetInstance()->GetDeviceContext()->IASetVertexBuffers(0, 1, &Vertex_Buffer_FreedomGundam, &m_srtide, &m_zero);
+	SetupGraphics::GetInstance()->GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	SetupGraphics::GetInstance()->GetDeviceContext()->IASetInputLayout(m_InputLayout);
+
+	SetupGraphics::GetInstance()->GetDeviceContext()->IASetIndexBuffer(m_Index_Buffer_FreedomGundam, DXGI_FORMAT_R32_UINT, 0);
+	////VS
+	SetupGraphics::GetInstance()->GetDeviceContext()->VSSetShader(m_VertexShader, NULL, 0);
+	SetupGraphics::GetInstance()->GetDeviceContext()->VSSetConstantBuffers(0, 1, &m_ConstbufferObject);
+	SetupGraphics::GetInstance()->GetDeviceContext()->VSSetConstantBuffers(1, 1, &m_ConstbufferSeen);
+	////RS
+
+	////PS
+	SetupGraphics::GetInstance()->GetDeviceContext()->PSSetShader(GundamPixalShader, NULL, 0);
+	SetupGraphics::GetInstance()->GetDeviceContext()->PSSetShaderResources(0, 1, &m_StrikeGundamveiw);
+	////OM
+	SetupGraphics::GetInstance()->GetDeviceContext()->DrawIndexed(10359, 0, 0);
+#pragma endregion
+#pragma region Setting All Your Variables to do your Fidth draw 
+
+	Map_UnMap_Variables(&m_ConstbufferObject, DuelGundamWorldMatrix);
+	SetupGraphics::GetInstance()->GetDeviceContext()->IASetVertexBuffers(0, 1, &Vertex_Buffer_DuelGundam, &m_srtide, &m_zero);
+	SetupGraphics::GetInstance()->GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	SetupGraphics::GetInstance()->GetDeviceContext()->IASetInputLayout(m_InputLayout);
+
+	SetupGraphics::GetInstance()->GetDeviceContext()->IASetIndexBuffer(m_Index_Buffer_DuelGundam, DXGI_FORMAT_R32_UINT, 0);
+	////VS
+	SetupGraphics::GetInstance()->GetDeviceContext()->VSSetShader(m_VertexShader, NULL, 0);
+	SetupGraphics::GetInstance()->GetDeviceContext()->VSSetConstantBuffers(0, 1, &m_ConstbufferObject);
+	SetupGraphics::GetInstance()->GetDeviceContext()->VSSetConstantBuffers(1, 1, &m_ConstbufferSeen);
+	////RS
+
+	////PS
+	SetupGraphics::GetInstance()->GetDeviceContext()->PSSetShader(GundamPixalShader, NULL, 0);
+	SetupGraphics::GetInstance()->GetDeviceContext()->PSSetShaderResources(0, 1, &m_DuelGundamveiw);
+	////OM
+	SetupGraphics::GetInstance()->GetDeviceContext()->DrawIndexed(10761, 0, 0);
+#pragma endregion
+#pragma region Setting All Your Variables to do your Fidth draw 
+
+	Map_UnMap_Variables(&m_ConstbufferObject, AgeisGundamWorldMatrix);
+	SetupGraphics::GetInstance()->GetDeviceContext()->IASetVertexBuffers(0, 1, &Vertex_Buffer_AgeisGundam, &m_srtide, &m_zero);
+	SetupGraphics::GetInstance()->GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	SetupGraphics::GetInstance()->GetDeviceContext()->IASetInputLayout(m_InputLayout);
+
+	SetupGraphics::GetInstance()->GetDeviceContext()->IASetIndexBuffer(m_Index_Buffer_AgeisGundam, DXGI_FORMAT_R32_UINT, 0);
+	////VS
+	SetupGraphics::GetInstance()->GetDeviceContext()->VSSetShader(m_VertexShader, NULL, 0);
+	SetupGraphics::GetInstance()->GetDeviceContext()->VSSetConstantBuffers(0, 1, &m_ConstbufferObject);
+	SetupGraphics::GetInstance()->GetDeviceContext()->VSSetConstantBuffers(1, 1, &m_ConstbufferSeen);
+	////RS
+
+	////PS
+	SetupGraphics::GetInstance()->GetDeviceContext()->PSSetShader(GundamPixalShader, NULL, 0);
+	SetupGraphics::GetInstance()->GetDeviceContext()->PSSetShaderResources(0, 1, &m_AgeisGundamveiw);
+	////OM
+	SetupGraphics::GetInstance()->GetDeviceContext()->DrawIndexed(9000, 0, 0);
+#pragma endregion
+#pragma region Setting All Your Variables to do your Fidth draw 
+
+	Map_UnMap_Variables(&m_ConstbufferObject, WingZeroGundamWorldMatrix);
+	SetupGraphics::GetInstance()->GetDeviceContext()->IASetVertexBuffers(0, 1, &Vertex_Buffer_WingZeroGundam, &m_srtide, &m_zero);
+	SetupGraphics::GetInstance()->GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	SetupGraphics::GetInstance()->GetDeviceContext()->IASetInputLayout(m_InputLayout);
+
+	SetupGraphics::GetInstance()->GetDeviceContext()->IASetIndexBuffer(m_Index_Buffer_WingZeroGundam, DXGI_FORMAT_R32_UINT, 0);
+	////VS
+	SetupGraphics::GetInstance()->GetDeviceContext()->VSSetShader(m_VertexShader, NULL, 0);
+	SetupGraphics::GetInstance()->GetDeviceContext()->VSSetConstantBuffers(0, 1, &m_ConstbufferObject);
+	SetupGraphics::GetInstance()->GetDeviceContext()->VSSetConstantBuffers(1, 1, &m_ConstbufferSeen);
+	////RS
+
+	////PS
+	SetupGraphics::GetInstance()->GetDeviceContext()->PSSetShader(GundamPixalShader, NULL, 0);
+	SetupGraphics::GetInstance()->GetDeviceContext()->PSSetShaderResources(0, 1, &m_WingZeroGundamveiw);
+	////OM
+	SetupGraphics::GetInstance()->GetDeviceContext()->DrawIndexed(8775, 0, 0);
 #pragma endregion
 
+
+
+
+	if (GetAsyncKeyState('Z') & 0x01 && SecondVeiwPortOn == false)
+	{
+		SecondVeiwPortOn = true;
+	}
+	else if (GetAsyncKeyState('X') & 0x01 && SecondVeiwPortOn == true)
+	{
+		SecondVeiwPortOn = false;
+	}
+	if (SecondVeiwPortOn)
+	{
+
+
+
+		XMFLOAT4X4 veiw;
+		matrix1 = XMLoadFloat4x4(&veiw);
+		matrix1 = XMMatrixIdentity();
+		matrix1 = XMMatrixMultiply(matrix1, XMMatrixTranslation(0.0f, 0.0f, 7.0f));
+		XMVECTOR vertex;
+		XMFLOAT3 vertex1;
+		vertex1.x = 0;
+		vertex1.y = 12;
+		vertex1.z = -50;
+		vertex = XMLoadFloat3(&vertex1);
+		XMMatrixInverse(&vertex, matrix1);
+		XMStoreFloat4x4(&veiw, matrix1);
+		matrixveiw.m_VeiwMatrix = veiw;
+		//XMMatrixLookAtLH()
+		//Map_UnMap_Variables(&m_ConstbufferSeen, matrixveiw);
+		SetupGraphics::GetInstance()->GetDeviceContext()->RSSetViewports(1, &SetupGraphics::GetInstance()->veiwport2);
+#pragma region Setting All Your Variables to do your first draw 
+
+		SetupGraphics::GetInstance()->GetDeviceContext()->PSSetSamplers(0, 1, &Sampler);
+		SetupGraphics::GetInstance()->GetDeviceContext()->RSSetState(g_pRasterState);
+		SetupGraphics::GetInstance()->GetDeviceContext()->IASetVertexBuffers(0, 1, &VertexBuffer, &m_srtide, &m_zero);
+		SetupGraphics::GetInstance()->GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		SetupGraphics::GetInstance()->GetDeviceContext()->IASetInputLayout(m_InputLayout);
+
+		SetupGraphics::GetInstance()->GetDeviceContext()->IASetIndexBuffer(m_IndexBuffer, DXGI_FORMAT_R32_UINT, 0);
+		//VS
+		SetupGraphics::GetInstance()->GetDeviceContext()->VSSetShader(m_VertexShader, NULL, 0);
+		SetupGraphics::GetInstance()->GetDeviceContext()->VSSetConstantBuffers(0, 1, &m_ConstbufferObject);
+		SetupGraphics::GetInstance()->GetDeviceContext()->VSSetConstantBuffers(1, 1, &m_ConstbufferSeen);
+		//m_deviceContext->VSSetShaderResources(0, 1, &ResourceVeiw);
+		//m_deviceContext->VSSetShaderResources(1, 1, &ResourceVeiw);
+		//RS
+		//m_deviceContext->RSSetScissorRects(1, rects);
+		//SetupGraphics::GetInstance()->GetDeviceContext()->RSSetViewports(1, &SetupGraphics::GetInstance()->vp);
+		//m_deviceContext->RSSetState(g_pRasterState);
+		//->RSSetState(g_pRasterState);
+		//PS
+		SetupGraphics::GetInstance()->GetDeviceContext()->PSSetConstantBuffers(0, 1, &PixalBuffer);
+		SetupGraphics::GetInstance()->GetDeviceContext()->PSSetShader(m_PixalShader, NULL, 0);
+		SetupGraphics::GetInstance()->GetDeviceContext()->PSSetShaderResources(0, 1, &ResourceVeiw);
+		//OM
+		//m_deviceContext->OMSetDepthStencilState(DepthState, 1);SSSSSSSSSSSSSSSSSSSWWWWWWWWWWWWWWWWWWWWWWSSSSSSSSSSSSSSSSSSSSSSSS
+		SetupGraphics::GetInstance()->GetDeviceContext()->OMSetRenderTargets(1, SetupGraphics::GetInstance()->GetRenderTargetView(), pDSV);
+
+		SetupGraphics::GetInstance()->GetDeviceContext()->DrawIndexed(1692, 0, 0);
+#pragma endregion
+
+
+#pragma region Setting all the variables To do the Second Draw 
+
+		SetupGraphics::GetInstance()->GetDeviceContext()->RSSetState(g_pRasterState2);
+
+		/*Map_UnMap_Variables(&m_ConstbufferSeen, vs_shaderVeiwProjection);
+		Map_UnMap_Variables(&m_ConstbufferObject, vs_worldMatrix);
+		*/
+
+
+		SetupGraphics::GetInstance()->GetDeviceContext()->IASetVertexBuffers(0, 1, &GridVertexBuffer, &m_srtide, &m_zero);
+		SetupGraphics::GetInstance()->GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
+		SetupGraphics::GetInstance()->GetDeviceContext()->IASetInputLayout(m_InputLayoutGrid);
+		SetupGraphics::GetInstance()->GetDeviceContext()->IASetIndexBuffer(m_GridIndexBuffer, DXGI_FORMAT_R32_UINT, 0);
+
+
+		SetupGraphics::GetInstance()->GetDeviceContext()->VSSetConstantBuffers(0, 1, &m_ConstbufferObject);
+		SetupGraphics::GetInstance()->GetDeviceContext()->VSSetConstantBuffers(1, 1, &m_ConstbufferSeen);
+		SetupGraphics::GetInstance()->GetDeviceContext()->VSSetShader(m_GridVertexShader, NULL, 0);
+		SetupGraphics::GetInstance()->GetDeviceContext()->PSSetShader(m_GridPixalShader, NULL, 0);
+
+		SetupGraphics::GetInstance()->GetDeviceContext()->DrawIndexed(84, 0, 0);
+#pragma endregion
+
+
+#pragma region Setting All Your Variables to do your Thrid draw 
+
+		SetupGraphics::GetInstance()->GetDeviceContext()->IASetVertexBuffers(0, 1, &Vertex_Buffer_Star, &m_srtide, &m_zero);
+		SetupGraphics::GetInstance()->GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		SetupGraphics::GetInstance()->GetDeviceContext()->IASetInputLayout(m_InputLayout);
+
+		SetupGraphics::GetInstance()->GetDeviceContext()->IASetIndexBuffer(m_Index_Buffer_Star, DXGI_FORMAT_R32_UINT, 0);
+		////VS
+		SetupGraphics::GetInstance()->GetDeviceContext()->VSSetShader(m_VertexShader, NULL, 0);
+		SetupGraphics::GetInstance()->GetDeviceContext()->VSSetConstantBuffers(0, 1, &m_ConstbufferObject);
+		SetupGraphics::GetInstance()->GetDeviceContext()->VSSetConstantBuffers(1, 1, &m_ConstbufferSeen);
+		////RS
+
+		////PS
+		SetupGraphics::GetInstance()->GetDeviceContext()->PSSetShader(GundamPixalShader, NULL, 0);
+		SetupGraphics::GetInstance()->GetDeviceContext()->PSSetShaderResources(0, 1, &m_Gundamveiw);
+		////OM
+		SetupGraphics::GetInstance()->GetDeviceContext()->DrawIndexed(10359, 0, 0);
+#pragma endregion
+
+
+#pragma region Setting All Your Variables to do your Thrid draw 
+		Map_UnMap_Variables(&m_ConstbufferObject, FreedomGundamWorldMatrix);
+		SetupGraphics::GetInstance()->GetDeviceContext()->IASetVertexBuffers(0, 1, &Vertex_Buffer_FreedomGundam, &m_srtide, &m_zero);
+		SetupGraphics::GetInstance()->GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		SetupGraphics::GetInstance()->GetDeviceContext()->IASetInputLayout(m_InputLayout);
+
+		SetupGraphics::GetInstance()->GetDeviceContext()->IASetIndexBuffer(m_Index_Buffer_FreedomGundam, DXGI_FORMAT_R32_UINT, 0);
+		////VS
+		SetupGraphics::GetInstance()->GetDeviceContext()->VSSetShader(m_VertexShader, NULL, 0);
+		SetupGraphics::GetInstance()->GetDeviceContext()->VSSetConstantBuffers(0, 1, &m_ConstbufferObject);
+		SetupGraphics::GetInstance()->GetDeviceContext()->VSSetConstantBuffers(1, 1, &m_ConstbufferSeen);
+		////RS
+
+		////PS
+		SetupGraphics::GetInstance()->GetDeviceContext()->PSSetShader(GundamPixalShader, NULL, 0);
+		SetupGraphics::GetInstance()->GetDeviceContext()->PSSetShaderResources(0, 1, &m_Gundamveiw);
+		////OM
+		SetupGraphics::GetInstance()->GetDeviceContext()->DrawIndexed(9897, 0, 0);
+#pragma endregion
+	}
 	if (m_timer > 0 || numbertimer > 0)
 	{
 		m_timer -= 1;
@@ -1614,30 +2147,10 @@ bool DEMO_APP::Run()
 
 #endif
 
-#if Lab7
-	Set_PS_VS_INPUTLAYOUT_VB_CB(m_srtide, m_zero, &m_PixalShader, &m_VertexShader, &m_buffer, &m_ConstantBuffer, &m_InputLayout);
-	DrawVerts(VertCount, D3D11_PRIMITIVE_TOPOLOGY_LINESTRIP);
-
-	Set_PS_VS_INPUTLAYOUT_VB_CB(m_srtide, m_zero, &m_PixalShader, &m_VertexShader, &m_InterVertex[0], &m_ConstantBuffer, &m_InputLayout);
-	DrawVerts(VertCount, D3D11_PRIMITIVE_TOPOLOGY_LINESTRIP);
-
-
-	Set_PS_VS_INPUTLAYOUT_VB_CB(m_srtide, m_zero, &m_PixalShader, &m_VertexShader, &m_InterVertex[1], &m_ConstantBuffer, &m_InputLayout);
-	DrawVerts(VertCount, D3D11_PRIMITIVE_TOPOLOGY_LINESTRIP);
-
-	//Set_PS_VS_INPUTLAYOUT_VB_CB(m_srtide, m_zero, &m_PixalShader, &m_VertexShader, &TriangleVertexBuffer, &m_ConstantBuffer, &m_InputLayout);
-	//DrawVerts(VertCount, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-	for (size_t i = 0; i < 50; i++)
-	{
-		Set_PS_VS_INPUTLAYOUT_VB_CB(m_srtide, m_zero, &m_PixalShader, &m_VertexShader, &m_Checkeard[i], &m_ConstantBuffer, &m_InputLayout);
-		DrawVerts(4, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-	}
-#endif
-
 	SetupGraphics::GetInstance()->GetSwapChain()->Present(0, 0);
 
 	return true;
-	}
+}
 
 //************************************************************
 //************ DESTRUCTION ***********************************
@@ -1652,8 +2165,8 @@ bool DEMO_APP::ShutDown()
 	//m_buffer->Release();
 	//	m_ConstantBuffer->Release();
 	m_InputLayout->Release();
-	m_RenderTargetVeiw->Release();
-	m_SwapChain->Release();
+	//m_RenderTargetVeiw->Release();
+	//	m_SwapChain->Release();
 	m_PixalShader->Release();
 	m_VertexShader->Release();
 	m_ConstbufferObject->Release();
@@ -1673,12 +2186,20 @@ bool DEMO_APP::ShutDown()
 	Sampler->Release();
 	m_blendstate->Release();
 	m_texture->Release();
+	m_AgeisGundam->Release();
+	m_AgeisGundamveiw->Release();
 	//m_Resource->Release();
 	ResourceVeiw->Release();
 	//PixalConstbuffer->Release();
 	m_factory->Release();
 	//	m_buffer->Release();
 	PixalBuffer->Release();
+	m_DuelGundamveiw->Release();
+	Vertex_Buffer_WingZeroGundam->Release();
+	m_Index_Buffer_WingZeroGundam->Release();
+	Vertex_Buffer_AgeisGundam->Release();
+	m_Index_Buffer_AgeisGundam->Release();
+
 	UnregisterClass(L"DirectXApplication", application);
 
 	return true;
@@ -1727,18 +2248,19 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		pDSV->Release();
 		m_DepthBuffer->Release();
 		DepthState->Release();
-		m_deviceContext->Flush();
-		m_SwapChain->ResizeBuffers(1, 0, 0, DXGI_FORMAT_R8G8B8A8_UNORM, 0x2);
+
+		SetupGraphics::GetInstance()->GetDeviceContext()->Flush();
+		SetupGraphics::GetInstance()->GetSwapChain()->ResizeBuffers(1, 0, 0, DXGI_FORMAT_R8G8B8A8_UNORM, 0x2);
 		//DXGI_SWAP_CHAIN_DESC swap;
 		DXGI_SWAP_CHAIN_DESC swap;
-		m_SwapChain->GetDesc(&swap);
+		SetupGraphics::GetInstance()->GetSwapChain()->GetDesc(&swap);
 		//swap.OutputWindow = window;
 		swap.SampleDesc.Count = 1;
 		swap.SampleDesc.Quality = 0;
 		swap.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
 		ID3D11Texture2D* Buffer;
-		m_SwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&Buffer);
-		m_device->CreateRenderTargetView(Buffer, NULL, &m_RenderTargetVeiw);
+		SetupGraphics::GetInstance()->GetSwapChain()->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&Buffer);
+		SetupGraphics::GetInstance()->GetDevice()->CreateRenderTargetView(Buffer, NULL, SetupGraphics::GetInstance()->GetRenderTargetView());
 		//m_SwapChain->Release();
 		Buffer->Release();
 		D3D11_DEPTH_STENCIL_DESC dsDesc;
@@ -1762,7 +2284,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		dsDesc.BackFace.StencilDepthFailOp = D3D11_STENCIL_OP_DECR;
 		dsDesc.BackFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
 		dsDesc.BackFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
-		m_device->CreateDepthStencilState(&dsDesc, &DepthState);
+		SetupGraphics::GetInstance()->GetDevice()->CreateDepthStencilState(&dsDesc, &DepthState);
 		D3D11_TEXTURE2D_DESC DescDepthBuffer;
 		DescDepthBuffer.Width = swap.BufferDesc.Width;
 		DescDepthBuffer.Height = swap.BufferDesc.Height;
@@ -1775,25 +2297,28 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		DescDepthBuffer.BindFlags = D3D11_BIND_DEPTH_STENCIL;
 		DescDepthBuffer.CPUAccessFlags = 0;
 		DescDepthBuffer.MiscFlags = 0;
-		m_device->CreateTexture2D(&DescDepthBuffer, NULL, &m_DepthBuffer);
+		SetupGraphics::GetInstance()->GetDevice()->CreateTexture2D(&DescDepthBuffer, NULL, &m_DepthBuffer);
 		D3D11_DEPTH_STENCIL_VIEW_DESC descDSV;
 		descDSV.Format = DXGI_FORMAT_D32_FLOAT;
 		descDSV.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
 		descDSV.Texture2D.MipSlice = 0;
 		descDSV.Flags = 0;
 		descDSV.ViewDimension;
-		m_device->CreateDepthStencilView(m_DepthBuffer, NULL, &pDSV);
-		m_deviceContext->OMSetRenderTargets(1, &m_RenderTargetVeiw, pDSV);
+		SetupGraphics::GetInstance()->GetDevice()->CreateDepthStencilView(m_DepthBuffer, NULL, &pDSV);
+		SetupGraphics::GetInstance()->GetDeviceContext()->OMSetRenderTargets(1, SetupGraphics::GetInstance()->GetRenderTargetView(), pDSV);
 		vp.Height = swap.BufferDesc.Height;
 		vp.Width = swap.BufferDesc.Width;
 		vp.MinDepth = 0.0f;
 		vp.MaxDepth = 1.0f;
 		vp.TopLeftX = 0;
 		vp.TopLeftY = 0;
-		m_deviceContext->RSSetViewports(1, &vp);
+		SetupGraphics::GetInstance()->GetDeviceContext()->RSSetViewports(1, &vp);
 
-		XMMATRIX proj = XMMatrixPerspectiveFovLH(65.f, swap.BufferDesc.Width / swap.BufferDesc.Height, 0.1f, 100.f);
-		memcpy_s(&ProjectionMatrix.m_matrix4x4, sizeof(XMMATRIX), &proj, sizeof(XMMATRIX));
+		/*	XMMATRIX proj = XMMatrixPerspectiveFovLH(65.f, swap.BufferDesc.Width / swap.BufferDesc.Height, 0.1f, 100.f);
+			memcpy_s(&ProjectionMatrix.m_matrix4x4, sizeof(XMMATRIX), &proj, sizeof(XMMATRIX));*/
+		XMMATRIX pmatrix;
+		pmatrix = XMMatrixPerspectiveFovLH(65.f, swap.BufferDesc.Width / swap.BufferDesc.Height, 0.1f, 100.f);
+		XMStoreFloat4x4(&ProjectionMatrix, pmatrix);
 		break;
 #pragma endregion
 

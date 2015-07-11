@@ -40,7 +40,6 @@ VertexOutPut main(VertexInput input)
 {
 	VertexOutPut m_output = (VertexOutPut)0;
 	float4 m_local = float4(input.m_postionL.xyz, 1);// float4(input.m_postionL.xyz, 1);
-
 		m_local = mul(m_local, WorldMatrix);
 	m_local = mul(m_local, viewMatrix);
 	m_local = mul(m_local, ProjectionMatrix);
@@ -48,6 +47,8 @@ VertexOutPut main(VertexInput input)
 	m_output.m_UV = input.UV;
 	m_output.m_nrm = input.m_nrm;
 	m_output.m_PositionH = m_local;
+	m_output.m_nrm = mul(input.m_nrm, WorldMatrix);
+	m_output.m_nrm = normalize(m_output.m_nrm);
 	return m_output;
 
 

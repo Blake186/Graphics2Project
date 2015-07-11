@@ -32,6 +32,7 @@ protected:
 	//HWND							window;
 public:
 	D3D11_VIEWPORT vp;
+	D3D11_VIEWPORT veiwport2;
 	static SetupGraphics* GetInstance();
 	SetupGraphics();
 	~SetupGraphics();
@@ -40,6 +41,7 @@ public:
 	ID3D11DeviceContext* GetDeviceContext() { return m_deviceContext; }
 	ID3D11RenderTargetView** GetRenderTargetView() { return &m_RenderTargetVeiw; }
 	IDXGISwapChain* GetSwapChain() { return m_SwapChain; }
+
 
 	// setters 
 
